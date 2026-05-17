@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Vibe Editor Pro (Native Canvas Engine)</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Geist', 'sans-serif'], playfair: ['"Playfair Display"', 'serif'] } } }
+        }
+    </script>
+
+    <style>
+        body { margin: 0; font-family: 'Geist', sans-serif; color: #ffffff; background-color: #000; }
+
+        .bg-video {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            object-fit: cover; z-index: -10; pointer-events: none; opacity: 0.9;
+        }
+
+        .glass-panel { 
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); 
+        }
+
+        .glass-btn { 
+            background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); 
+            backdrop-filter: blur(10px); transition: all 0.2s ease; 
+        }
+        .glass-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.15); }
+
+        .solid-modal { background-color: #0B0B13; border: 1px solid rgba(255,255,255,0.1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .modal-enter { transform: translateY(100%) scale(0.95); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
+        .modal-active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        @media (min-width: 768px) { .modal-enter { transform: scale(0.95); } }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 2px; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-0 md:p-6 overflow-hidden">
+
+    <video class="bg-video" autoplay loop muted playsinline>
+        <source src="ArpadSpodni_A_beautiful_dark_gradient_suitable_for_a_windows__323a8f49-34f9-4d97-a266-fd62251e1187_0.mp4" type="video/mp4">
+    </video>
+
+    <input type="file" id="upload-multiple" multiple accept="image/*,video/*" class="hidden" onchange="handleUpload(event)">
+    <input type="file" id="upload-replace" accept="image/*,video/*" class="hidden" onchange="handleReplace(event)">
+
+    <div class="w-full h-full md:h-[90vh] max-w-5xl glass-panel md:rounded-3xl flex flex-col md:flex-row overflow-hidden relative">
+        
+        <div class="w-full md:w-[55%] lg:w-[60%] p-4 md:p-8 flex flex-col justify-center items-center border-b md:border-b-0 md:border-r border-white/10 relative">
+            <div class="md:hidden flex justify-between items-center w-full mb-6">
+                <button onclick="document.getElementById('upload-multiple').click()" class="w-10 h-10 glass-btn rounded-full flex items-center justify-center text-white"><i class="fa-solid fa-plus"></i></button>
+                <h1 class="font-playfair text-2xl tracking-wide text-white/90">Vibe Editor</h1>
+                <div class="w-10"></div>
+            </div>
+
+            <div class="w-full max-w-sm mx-auto relative flex items-center justify-center">
+                <button onclick="moveSlider(-1)" id="btn-prev" class="absolute -left-5 md:-left-12 w-12 h-12 glass-btn rounded-full flex items-center justify-center text-white z-50 shadow-xl hidden hover:scale-110 active:scale-95"><i class="fa-solid fa-chevron-left"></i></button>
+
+                <div id="export-target" class="relative w-full bg-black/80 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 transition-all duration-300" style="aspect-ratio: 3/4;">
+                    <div id="slider" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth" onscroll="updateDots()"></div>
+                    
+                    <div id="disclaimer-overlay" class="absolute left-0 w-full flex justify-center pointer-events-none z-40 hidden" style="top: 83.333%;">
+                        <img id="disclaimer-image" src="" class="w-11/12 object-contain drop-shadow-lg">
+                    </div>
+                </div>
+
+                <button onclick="moveSlider(1)" id="btn-next" class="absolute -right-5 md:-right-12 w-12 h-12 glass-btn rounded-full flex items-center justify-center text-white z-50 shadow-xl hidden hover:scale-110 active:scale-95"><i class="fa-solid fa-chevron-right"></i></button>
+                <div id="slider-dots" class="absolute -bottom-8 left-1/2 -translate-x-1/2 flex gap-2 hidden z-10"></div>
+            </div>
+        </div>
+
+        <div class="w-full md:w-[45%] lg:w-[40%] p-6 md:p-8 flex flex-col bg-black/30">
+            <div class="hidden md:flex justify-between items-center w-full mb-10">
+                <h1 class="font-playfair text-3xl tracking-wide">Vibe Editor</h1>
+                <button onclick="document.getElementById('upload-multiple').click()" class="w-10 h-10 glass-btn rounded-full flex items-center justify-center"><i class="fa-solid fa-plus text-white"></i></button>
+            </div>
+
+            <div class="flex-1 flex flex-col gap-6 justify-center">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-widest text-white/50 mb-2 ml-1">Пропорції</p>
+                    <div class="flex p-1 glass-panel rounded-xl w-full">
+                        <button onclick="changeRatio('3/4')" id="btn-ratio-34" class="w-1/2 py-3 bg-blue-600 shadow-lg border border-blue-400/30 rounded-lg text-sm font-bold text-white transition-all">3:4 (Post)</button>
+                        <button onclick="changeRatio('9/16')" id="btn-ratio-916" class="w-1/2 py-3 text-sm font-bold text-white/50 hover:text-white transition-all">9:16 (Story)</button>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-widest text-white/50 mb-2 ml-1">Дисклеймери</p>
+                    <div class="flex flex-col gap-2.5">
+                        <button onclick="openDisclaimerModal('global')" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-3 shadow-[0_0_20px_rgba(37,99,235,0.4)] border border-blue-400/50 hover:scale-[1.02] transition-all active:scale-95">
+                            <i class="fa-solid fa-layer-group"></i> Обрати дисклеймер (Всі)
+                        </button>
+                        <button onclick="openDisclaimerModal('local')" class="w-full glass-btn text-white py-4 rounded-xl font-bold flex justify-center items-center gap-3 hover:scale-[1.02] transition-all active:scale-95 border border-white/10 shadow-lg">
+                            <i class="fa-solid fa-sliders text-blue-400"></i> Замінити на поточному
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-widest text-white/50 mb-2 ml-1">Кадрування</p>
+                    <button onclick="initCrop()" class="w-full glass-btn text-white/90 py-4 rounded-xl font-bold flex justify-center items-center gap-3 hover:scale-[1.02] active:scale-95">
+                        <i class="fa-solid fa-crop-simple"></i> Ракурс (Pan & Zoom)
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-white/10 flex gap-3">
+                <button onclick="exportMedia('current')" id="btn-export-current" class="flex-1 glass-btn hover:bg-blue-600/50 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 active:scale-95 transition-all text-sm">
+                    <span id="export-text-current">Поточне</span> <i id="export-icon-current" class="fa-solid fa-download text-blue-400"></i>
+                </button>
+                <button onclick="exportMedia('all')" id="btn-export-all" disabled class="flex-1 glass-btn hover:bg-purple-600/50 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-2 active:scale-95 transition-all text-sm disabled:opacity-30 disabled:cursor-not-allowed">
+                    <span id="export-text-all">Всі</span> <i id="export-icon-all" class="fa-solid fa-layer-group text-purple-400"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="backdrop" class="fixed inset-0 bg-black/80 z-[9000] hidden opacity-0 transition-opacity duration-300" onclick="closeModals()"></div>
+
+    <div id="disclaimer-modal" class="modal-enter fixed bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-md z-[9999] solid-modal rounded-t-3xl md:rounded-3xl flex flex-col h-[75vh] md:h-auto md:max-h-[80vh] shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
+        <div class="md:hidden w-12 h-1.5 bg-white/10 rounded-full mx-auto mt-3 mb-2"></div>
+        <div class="px-6 py-4 flex justify-between items-center border-b border-white/10">
+            <h2 class="font-playfair font-bold text-2xl text-white">Каталог ХВ</h2>
+            <button onclick="closeModals()" class="text-white/50 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="flex p-1.5 bg-white/5 mx-6 mt-5 rounded-xl">
+            <button onclick="renderTabs('zyn')" id="tab-zyn" class="flex-1 py-2 bg-blue-600 rounded-lg font-bold text-sm text-white transition-all">ZYN</button>
+            <button onclick="renderTabs('iqos')" id="tab-iqos" class="flex-1 py-2 font-bold text-sm text-white/50 hover:text-white transition-all">IQOS</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3 no-scrollbar" id="disclaimer-list">
+            <p id="drive-status" class="text-white/50 text-center mt-8 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Підключення до бази...</p>
+        </div>
+    </div>
+
+    <div id="crop-modal" class="modal-enter fixed bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-md z-[9999] solid-modal rounded-t-3xl md:rounded-3xl flex flex-col h-[85vh] md:h-auto shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
+        <div class="md:hidden w-12 h-1.5 bg-white/10 rounded-full mx-auto mt-3 mb-2"></div>
+        <div class="px-6 py-4 flex justify-between items-center border-b border-white/10">
+            <h2 class="font-playfair font-bold text-2xl text-white">Ракурс</h2>
+            <button onclick="closeModals()" class="text-white/50 hover:text-white text-2xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="p-6 flex-1 flex flex-col items-center">
+            <div id="pan-container" class="w-[250px] relative bg-black/80 rounded-xl overflow-hidden shadow-inner cursor-move" style="aspect-ratio: 3/4;" onmousedown="startDrag(event)" onmousemove="doDrag(event)" onmouseup="stopDrag()" onmouseleave="stopDrag()" ontouchstart="startDrag(event)" ontouchmove="doDrag(event)" ontouchend="stopDrag()">
+                <div id="pan-target" class="w-full h-full transform-origin-center"></div>
+            </div>
+            <div class="w-full mt-8 flex items-center gap-4 px-4">
+                <i class="fa-solid fa-image text-white/50 text-sm"></i>
+                <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1" oninput="updateZoom()">
+                <i class="fa-solid fa-image text-white text-lg"></i>
+            </div>
+            <button onclick="saveCrop()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold mt-8 transition-colors border border-blue-400/50">
+                Зберегти ракурс
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let globalActiveDisclaimerUrl = null;
+        // За замовчуванням беремо картинку, яка точно має CORS-доступ, або чорний фон, якщо юзер одразу завантажить свою
+        let slides = [{ type: 'image', src: 'https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?q=80&w=800&auto=format&fit=crop', scale: 1, x: 0, y: 0, disclaimerUrl: null }];
+        let currentRatio = '3/4';
+        let replaceTargetIndex = -1;
+        let disclaimersData = { zyn: [], iqos: [] };
+        let disclaimerSelectionMode = 'global'; 
+
+        // Завантаження бази Google Drive
+        async function fetchDrive() {
+            const url = "https://script.google.com/macros/s/AKfycbz6ro91E_mqkrQYW8qAxw2sXqPD-AF084Dwmj-sBTne3OwHxPFyaA9-XtCMinEMqIDy/exec";
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if(data && (data.zyn.length > 0 || data.iqos.length > 0)) disclaimersData = data;
+            } catch(e) {
+                document.getElementById('drive-status').innerHTML = `<p class="text-red-400 text-center mt-4">Помилка бази Drive.</p>`;
+            }
+            if(document.getElementById('disclaimer-modal').classList.contains('modal-active')) renderTabs('zyn');
+        }
+        fetchDrive();
+
+        function renderSlides() {
+            const slider = document.getElementById('slider');
+            const dots = document.getElementById('slider-dots');
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            const btnExportAll = document.getElementById('btn-export-all');
+
+            slider.innerHTML = ''; dots.innerHTML = '';
+
+            if (slides.length > 1) {
+                dots.classList.remove('hidden'); btnPrev.classList.remove('hidden'); btnNext.classList.remove('hidden');
+                btnExportAll.disabled = false;
+            } else {
+                dots.classList.add('hidden'); btnPrev.classList.add('hidden'); btnNext.classList.add('hidden');
+                btnExportAll.disabled = true;
+            }
+
+            slides.forEach((slide, i) => {
+                const style = `transform: scale(${slide.scale}) translate(${slide.x}px, ${slide.y}px);`;
+                const media = slide.type === 'video' 
+                    ? `<video src="${slide.src}" class="w-full h-full object-cover transition-transform pointer-events-none" style="${style}" autoplay loop muted playsinline></video>`
+                    : `<img src="${slide.src}" class="w-full h-full object-cover transition-transform pointer-events-none" style="${style}">`;
+                
+                slider.innerHTML += `
+                    <div class="snap-center shrink-0 w-full h-full relative slide-container" id="slide-${i}">
+                        <div class="w-full h-full overflow-hidden relative z-10">${media}</div>
+                        <button onclick="triggerReplace(${i})" class="fa-rotate-btn absolute top-4 right-4 bg-black/60 border border-white/20 text-white text-xs px-4 py-2 rounded-full z-50 font-bold hover:bg-blue-600 transition-colors cursor-pointer">
+                            <i class="fa-solid fa-rotate mr-1"></i> Замінити
+                        </button>
+                    </div>
+                `;
+                dots.innerHTML += `<div class="dot w-2 h-2 rounded-full transition-all ${i === 0 ? 'bg-white' : 'bg-white/30'}"></div>`;
+            });
+            updateOverlayForCurrentSlide();
+        }
+
+        function moveSlider(dir) { document.getElementById('slider').scrollBy({ left: dir * document.getElementById('slider').offsetWidth, behavior: 'smooth' }); }
+        
+        function updateDots() {
+            const index = getCurrentSlideIndex();
+            document.querySelectorAll('.dot').forEach((d, i) => { d.className = `dot w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white' : 'bg-white/30'}`; });
+            updateOverlayForCurrentSlide();
+        }
+
+        function getCurrentSlideIndex() {
+            const slider = document.getElementById('slider');
+            if (!slider || !slider.offsetWidth) return 0;
+            return Math.round(slider.scrollLeft / slider.offsetWidth);
+        }
+
+        function updateOverlayForCurrentSlide() {
+            const currentIdx = getCurrentSlideIndex();
+            const slide = slides[currentIdx];
+            const overlay = document.getElementById('disclaimer-overlay');
+            const imgElement = document.getElementById('disclaimer-image');
+            
+            if (slide && slide.disclaimerUrl) {
+                imgElement.src = slide.disclaimerUrl;
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+                imgElement.src = '';
+            }
+        }
+
+        function handleUpload(e) {
+            const files = e.target.files; if(!files.length) return;
+            if (slides.length === 1 && slides[0].src.includes('unsplash')) slides = [];
+            for(let f of files) slides.push({ type: f.type.startsWith('video') ? 'video' : 'image', src: URL.createObjectURL(f), scale: 1, x: 0, y: 0, disclaimerUrl: globalActiveDisclaimerUrl });
+            renderSlides(); e.target.value = '';
+        }
+        function triggerReplace(index) { replaceTargetIndex = index; document.getElementById('upload-replace').click(); }
+        function handleReplace(e) {
+            const f = e.target.files[0]; if(!f || replaceTargetIndex === -1) return;
+            slides[replaceTargetIndex].type = f.type.startsWith('video') ? 'video' : 'image';
+            slides[replaceTargetIndex].src = URL.createObjectURL(f);
+            renderSlides(); e.target.value = ''; replaceTargetIndex = -1;
+        }
+
+        function changeRatio(ratio) {
+            currentRatio = ratio;
+            document.getElementById('export-target').style.aspectRatio = ratio === '3/4' ? '3 / 4' : '9 / 16';
+            
+            const overlay = document.getElementById('disclaimer-overlay');
+            // Візуальні гайдлайни в %
+            overlay.style.top = ratio === '3/4' ? '83.333%' : '88.542%';
+
+            const activeClass = 'w-1/2 py-3 bg-blue-600 shadow-lg border border-blue-400/30 rounded-lg text-sm font-bold text-white transition-all';
+            const inactiveClass = 'w-1/2 py-3 text-sm font-bold text-white/50 hover:text-white transition-all';
+            document.getElementById('btn-ratio-34').className = ratio === '3/4' ? activeClass : inactiveClass;
+            document.getElementById('btn-ratio-916').className = ratio === '9/16' ? activeClass : inactiveClass;
+        }
+
+        function openDisclaimerModal(mode) { disclaimerSelectionMode = mode; openModal('disclaimer-modal'); }
+        function openModal(id) { document.getElementById('backdrop').classList.remove('hidden'); setTimeout(() => { document.getElementById('backdrop').classList.remove('opacity-0'); document.getElementById(id).classList.add('modal-active'); }, 10); if(id === 'disclaimer-modal') renderTabs('zyn'); }
+        function closeModals() { document.querySelectorAll('.modal-active').forEach(m => m.classList.remove('modal-active')); document.getElementById('backdrop').classList.add('opacity-0'); setTimeout(() => document.getElementById('backdrop').classList.add('hidden'), 300); }
+
+        function renderTabs(brand) {
+            const activeClass = 'flex-1 py-2 bg-blue-600 rounded-lg font-bold text-sm text-white transition-all';
+            const inactiveClass = 'flex-1 py-2 bg-white/5 font-bold text-sm text-white/50 hover:text-white transition-all';
+            document.getElementById('tab-zyn').className = brand === 'zyn' ? activeClass : inactiveClass;
+            document.getElementById('tab-iqos').className = brand === 'iqos' ? activeClass : inactiveClass;
+            
+            const list = document.getElementById('disclaimer-list'); list.innerHTML = '';
+            if(!disclaimersData[brand] || disclaimersData[brand].length === 0) { list.innerHTML = `<p class="text-white/50 text-center mt-4">Оновіть Apps Script!</p>`; return; }
+
+            disclaimersData[brand].forEach(item => {
+                list.innerHTML += `
+                    <div onclick="selectDisclaimer('${item.file}')" class="w-full flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl cursor-pointer group transition-colors">
+                        <div class="w-16 h-8 bg-white/10 rounded flex items-center justify-center overflow-hidden shrink-0">
+                             <img src="${item.file}" class="max-h-full max-w-full object-contain">
+                        </div>
+                        <div class="flex-1 font-bold text-white/90 text-sm md:text-base pointer-events-none">${item.name}</div>
+                        <i class="fa-solid fa-circle-check text-white/20 group-hover:text-blue-400 transition-colors text-xl pointer-events-none"></i>
+                    </div>
+                `;
+            });
+        }
+
+        function selectDisclaimer(url) {
+            if (disclaimerSelectionMode === 'global') {
+                globalActiveDisclaimerUrl = url;
+                slides.forEach(slide => slide.disclaimerUrl = url);
+            } else {
+                const currentIdx = getCurrentSlideIndex();
+                if(slides[currentIdx]) slides[currentIdx].disclaimerUrl = url;
+            }
+            updateOverlayForCurrentSlide(); closeModals();
+        }
+
+        // PAN & ZOOM
+        let cropState = { scale: 1, x: 0, y: 0, index: 0 };
+        let drag = { active: false, startX: 0, startY: 0 };
+        function initCrop() {
+            cropState.index = getCurrentSlideIndex(); const s = slides[cropState.index];
+            cropState.scale = s.scale; cropState.x = s.x; cropState.y = s.y;
+            document.getElementById('pan-container').style.aspectRatio = currentRatio === '3/4' ? '3 / 4' : '9 / 16';
+            document.getElementById('pan-target').innerHTML = s.type === 'video' ? `<video src="${s.src}" class="w-full h-full object-cover pointer-events-none" autoplay loop muted playsinline></video>` : `<img src="${s.src}" class="w-full h-full object-cover pointer-events-none">`;
+            document.getElementById('zoom-slider').value = cropState.scale; updateTransform(); openModal('crop-modal');
+        }
+        function updateZoom() { cropState.scale = parseFloat(document.getElementById('zoom-slider').value); updateTransform(); }
+        function updateTransform() { document.getElementById('pan-target').style.transform = `scale(${cropState.scale}) translate(${cropState.x}px, ${cropState.y}px)`; }
+        function startDrag(e) { drag.active = true; const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY; drag.startX = cx - cropState.x; drag.startY = cy - cropState.y; }
+        function doDrag(e) { if (!drag.active) return; e.preventDefault(); const cx = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; const cy = e.type.includes('touch') ? e.touches[0].clientY : e.clientY; if (cropState.scale <= 1.01) { cropState.x = 0; cropState.y = 0; } else { cropState.x = cx - drag.startX; cropState.y = cy - drag.startY; } updateTransform(); }
+        function stopDrag() { drag.active = false; }
+        function saveCrop() { slides[cropState.index].scale = cropState.scale; slides[cropState.index].x = cropState.x; slides[cropState.index].y = cropState.y; renderSlides(); closeModals(); }
+
+        // ============================================================================
+        // === МЕГА-ЕКСПОРТ (НАТИВНИЙ CANVAS ENGINE - ФІКС ЧОРНОГО ЕКРАНУ) ===
+        // ============================================================================
+        async function exportMedia(mode) {
+            try {
+                const slider = document.getElementById('slider');
+                let indicesToExport = [];
+
+                if (mode === 'current') {
+                    indicesToExport.push(getCurrentSlideIndex());
+                } else {
+                    for (let i = 0; i < slides.length; i++) indicesToExport.push(i);
+                }
+
+                // Перевірка наявності дисклеймерів
+                for (let i of indicesToExport) {
+                    if (!slides[i].disclaimerUrl) {
+                        alert(`На слайді №${i+1} не вибрано дисклеймер! Будь ласка, оберіть його.`);
+                        return;
+                    }
+                }
+
+                // Змінюємо вигляд кнопки
+                const textId = mode === 'current' ? 'export-text-current' : 'export-text-all';
+                const iconId = mode === 'current' ? 'export-icon-current' : 'export-icon-all';
+                const btnText = document.getElementById(textId);
+                const btnIcon = document.getElementById(iconId);
+                const originalText = btnText.innerText;
+                const originalIcon = btnIcon.className;
+
+                btnText.innerText = "Обробка..."; 
+                btnIcon.className = "fa-solid fa-spinner fa-spin text-blue-400";
+
+                // РЕНДЕР КОЖНОГО СЛАЙДУ ЧЕРЕЗ NATIVE HTML5 CANVAS (Без html2canvas)
+                for (let i of indicesToExport) {
+                    const slide = slides[i];
+                    
+                    // Габарити фінального файлу
+                    const W = 1080; 
+                    const H = currentRatio === '3/4' ? 1440 : 1920;
+
+                    // Створюємо справжній полотно (canvas)
+                    const c = document.createElement('canvas');
+                    c.width = W; 
+                    c.height = H;
+                    const ctx = c.getContext('2d');
+
+                    if (slide.type === 'image') {
+                        // 1. Завантажуємо фотографію
+                        const bgImg = new Image();
+                        bgImg.crossOrigin = "anonymous";
+                        await new Promise((resolve, reject) => {
+                            bgImg.onload = resolve;
+                            bgImg.onerror = reject;
+                            bgImg.src = slide.src;
+                        });
+
+                        // Заливаємо фон чорним (якщо фото не покриває весь екран)
+                        ctx.fillStyle = "#000000";
+                        ctx.fillRect(0, 0, W, H);
+
+                        // 2. Математика "Object-fit: Cover"
+                        const imgRatio = bgImg.width / bgImg.height;
+                        const canvasRatio = W / H;
+                        let drawW, drawH, startX, startY;
+
+                        if (imgRatio > canvasRatio) {
+                            drawH = H;
+                            drawW = bgImg.width * (H / bgImg.height);
+                            startX = (W - drawW) / 2;
+                            startY = 0;
+                        } else {
+                            drawW = W;
+                            drawH = bgImg.height * (W / bgImg.width);
+                            startX = 0;
+                            startY = (H - drawH) / 2;
+                        }
+
+                        // 3. Математика кадрування (Pan & Zoom)
+                        const previewEl = document.getElementById('export-target');
+                        const exportRatioScale = W / previewEl.offsetWidth; // Коефіцієнт між екраном і фіналом
+
+                        ctx.save();
+                        ctx.translate(W/2, H/2); // Центруємо
+                        ctx.scale(slide.scale, slide.scale); // Зумуємо
+                        ctx.translate(slide.x * exportRatioScale, slide.y * exportRatioScale); // Рухаємо
+                        ctx.drawImage(bgImg, startX - W/2, startY - H/2, drawW, drawH); // Малюємо
+                        ctx.restore();
+                    }
+
+                    // 4. Додаємо дисклеймер поверх (і для фото, і для відео-стікерів)
+                    const discImg = new Image();
+                    discImg.crossOrigin = "anonymous";
+                    await new Promise((resolve, reject) => {
+                        discImg.onload = resolve;
+                        discImg.onerror = reject;
+                        discImg.src = slide.disclaimerUrl;
+                    });
+
+                    // Дисклеймер займає 11/12 ширини екрану (91.666%)
+                    const tw = W * (11/12); 
+                    const scale = tw / discImg.width; 
+                    const th = discImg.height * scale;
+                    
+                    // ТОЧНА ПОЗИЦІЯ ЗГІДНО З ГАЙДЛАЙНАМИ СММ
+                    const targetY = currentRatio === '3/4' ? 1200 : 1700;
+                    
+                    ctx.drawImage(discImg, (W - tw) / 2, targetY, tw, th);
+                    
+                    // 5. Завантажуємо результат на комп'ютер/телефон
+                    const link = document.createElement('a');
+                    if (slide.type === 'image') {
+                        link.download = `Vibe_Export_${i+1}_${Date.now()}.jpg`;
+                        link.href = c.toDataURL('image/jpeg', 0.95);
+                    } else {
+                        link.download = `Vibe_Sticker_Video_${i+1}_${Date.now()}.png`;
+                        link.href = c.toDataURL('image/png');
+                    }
+                    link.click();
+                    
+                    await new Promise(r => setTimeout(r, 400)); // Пауза для браузера між завантаженнями
+                }
+
+                // Повертаємо кнопки у початковий стан
+                btnText.innerText = originalText; 
+                btnIcon.className = originalIcon;
+
+            } catch(e) {
+                console.error("Експорт впав:", e);
+                alert("Сталася помилка при експорті. Переконайтеся, що ви обрали дисклеймер.");
+                
+                // Відновлюємо кнопки у разі помилки
+                document.getElementById(mode === 'current' ? 'export-text-current' : 'export-text-all').innerText = mode === 'current' ? 'Поточне' : 'Всі';
+                document.getElementById(mode === 'current' ? 'export-icon-current' : 'export-icon-all').className = mode === 'current' ? 'fa-solid fa-download text-blue-400' : 'fa-solid fa-layer-group text-purple-400';
+            }
+        }
+
+        renderSlides();
+    </script>
+</body>
+</html>
