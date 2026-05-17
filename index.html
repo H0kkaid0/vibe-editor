@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vibe Editor Pro (Mobile Fixed)</title>
+    <title>Vibe Editor Pro</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -170,7 +170,18 @@
 
     <script>
         let globalActiveDisclaimerUrl = null;
-        let slides = [{ type: 'image', src: 'https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?q=80&w=800&auto=format&fit=crop', scale: 1, x: 0, y: 0, disclaimerUrl: null }];
+
+        // ВАШЕ ФОТО ЗА ЗАМОВЧУВАННЯМ
+        let slides = [{
+            type: 'image',
+            src: 'Flower.jpg', // Переконайтеся, що файл називається точно так і лежить на GitHub
+            scale: 1,
+            x: 0,
+            y: 0,
+            disclaimerUrl: null,
+            originalName: 'Flower' 
+        }];
+
         let currentRatio = '3/4';
         let replaceTargetIndex = -1;
         let disclaimersData = { zyn: [], iqos: [] };
@@ -256,8 +267,20 @@
 
         function handleUpload(e) {
             const files = e.target.files; if(!files.length) return;
-            if (slides.length === 1 && slides[0].src.includes('unsplash')) slides = [];
-            for(let f of files) slides.push({ type: f.type.startsWith('video') ? 'video' : 'image', src: URL.createObjectURL(f), scale: 1, x: 0, y: 0, disclaimerUrl: globalActiveDisclaimerUrl });
+            // Прибираємо початкове фото при першому завантаженні
+            if (slides.length === 1 && slides[0].originalName === 'Flower') slides = [];
+            for(let f of files) {
+                slides.push({
+                    type: f.type.startsWith('video') ? 'video' : 'image',
+                    src: URL.createObjectURL(f),
+                    scale: 1,
+                    x: 0,
+                    y: 0,
+                    disclaimerUrl: globalActiveDisclaimerUrl,
+                    // Зберігаємо назву файлу без розширення (.jpg/.png)
+                    originalName: f.name.replace(/\.[^/.]+$/, "")
+                });
+            }
             renderSlides(); e.target.value = '';
         }
         function triggerReplace(index) { replaceTargetIndex = index; document.getElementById('upload-replace').click(); }
@@ -265,6 +288,7 @@
             const f = e.target.files[0]; if(!f || replaceTargetIndex === -1) return;
             slides[replaceTargetIndex].type = f.type.startsWith('video') ? 'video' : 'image';
             slides[replaceTargetIndex].src = URL.createObjectURL(f);
+            slides[replaceTargetIndex].originalName = f.name.replace(/\.[^/.]+$/, "");
             renderSlides(); e.target.value = ''; replaceTargetIndex = -1;
         }
 
@@ -335,7 +359,7 @@
         function saveCrop() { slides[cropState.index].scale = cropState.scale; slides[cropState.index].x = cropState.x; slides[cropState.index].y = cropState.y; renderSlides(); closeModals(); }
 
         // ============================================================================
-        // === ЕКСПОРТ (НАТИВНИЙ CANVAS ENGINE) ===
+        // === ЕКСПОРТ ІЗ ДОДАВАННЯМ "_dis" ===
         // ============================================================================
         async function exportMedia(mode) {
             try {
@@ -432,13 +456,13 @@
                     ctx.drawImage(discImg, (W - tw) / 2, targetY, tw, th);
                     
                     const link = document.createElement('a');
-                    if (slide.type === 'image') {
-                        link.download = `Vibe_Export_${i+1}_${Date.now()}.jpg`;
-                        link.href = c.toDataURL('image/jpeg', 0.95);
-                    } else {
-                        link.download = `Vibe_Sticker_Video_${i+1}_${Date.now()}.png`;
-                        link.href = c.toDataURL('image/png');
-                    }
+                    
+                    // БЕРЕМО ОРИГІНАЛЬНУ НАЗВУ + "_dis"
+                    const fileName = slide.originalName || `Vibe_Export_${i+1}`;
+                    const extension = slide.type === 'image' ? 'jpg' : 'png';
+                    
+                    link.download = `${fileName}_dis.${extension}`;
+                    link.href = c.toDataURL(slide.type === 'image' ? 'image/jpeg' : 'image/png', 0.95);
                     link.click();
                     
                     await new Promise(r => setTimeout(r, 400)); 
