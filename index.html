@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Vibe Editor Pro</title>
+    <title>Disclaimer Editor</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,34 +20,20 @@
 
     <style>
         body { margin: 0; font-family: 'Geist', sans-serif; color: #ffffff; background-color: #000; }
-
-        .bg-video {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            object-fit: cover; z-index: -10; pointer-events: none; opacity: 0.9;
-        }
-
-        .glass-panel { 
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); 
-            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
-            border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); 
-        }
-
-        .glass-btn { 
-            background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); 
-            backdrop-filter: blur(10px); transition: all 0.2s ease; 
-        }
+        .bg-video { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: -10; pointer-events: none; opacity: 0.9; }
+        .glass-panel { background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); }
+        .glass-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px); transition: all 0.2s ease; }
         .glass-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.15); }
-
         .solid-modal { background-color: #0B0B13; border: 1px solid rgba(255,255,255,0.1); }
-        .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
         .modal-enter { transform: translateY(100%) scale(0.95); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; }
         .modal-active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
-        @media (min-width: 768px) { .modal-enter { transform: scale(0.95); } }
-
-        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #ffffff; cursor: pointer; margin-top: -8px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 2px; }
+        
+        #scrim-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+            pointer-events: none; z-index: 30; transition: opacity 0.3s ease;
+        }
     </style>
 </head>
 <body class="flex flex-col md:items-center md:justify-center min-h-screen p-0 md:p-6 overflow-x-hidden md:overflow-hidden relative">
@@ -64,7 +50,7 @@
         <div class="w-full md:w-[55%] lg:w-[60%] p-4 md:p-8 flex flex-col justify-center items-center border-b md:border-b-0 md:border-r border-white/10 relative shrink-0">
             <div class="md:hidden flex justify-between items-center w-full mb-6">
                 <button onclick="document.getElementById('upload-multiple').click()" class="w-10 h-10 glass-btn rounded-full flex items-center justify-center text-white"><i class="fa-solid fa-plus"></i></button>
-                <h1 class="font-playfair text-2xl tracking-wide text-white/90">Vibe Editor</h1>
+                <h1 class="font-playfair text-2xl tracking-wide text-white/90">Disclaimer Editor</h1>
                 <div class="w-10"></div>
             </div>
 
@@ -74,8 +60,10 @@
                 <div id="export-target" class="relative w-full bg-black/80 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10 transition-all duration-300" style="aspect-ratio: 3/4;">
                     <div id="slider" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar scroll-smooth" onscroll="updateDots()"></div>
                     
-                    <div id="disclaimer-overlay" class="absolute left-0 w-full flex justify-center pointer-events-none z-40 hidden" style="top: 83.333%;">
-                        <img id="disclaimer-image" src="" class="w-11/12 object-contain drop-shadow-lg">
+                    <div id="scrim-overlay" style="height: 30%; opacity: 0;"></div>
+
+                    <div id="disclaimer-overlay" class="absolute left-0 w-full flex justify-center pointer-events-none z-40 hidden transition-all duration-300" style="top: 81.25%;">
+                        <img id="disclaimer-image" src="" class="w-full object-contain drop-shadow-lg">
                     </div>
                 </div>
 
@@ -86,7 +74,7 @@
 
         <div class="w-full md:w-[45%] lg:w-[40%] p-6 md:p-8 flex flex-col bg-black/30 md:overflow-y-auto">
             <div class="hidden md:flex justify-between items-center w-full mb-10">
-                <h1 class="font-playfair text-3xl tracking-wide">Vibe Editor</h1>
+                <h1 class="font-playfair text-3xl tracking-wide">Disclaimer Editor</h1>
                 <button onclick="document.getElementById('upload-multiple').click()" class="w-10 h-10 glass-btn rounded-full flex items-center justify-center"><i class="fa-solid fa-plus text-white"></i></button>
             </div>
 
@@ -103,12 +91,30 @@
                     <p class="text-xs font-bold uppercase tracking-widest text-white/50 mb-2 ml-1">Дисклеймери</p>
                     <div class="flex flex-col gap-2.5">
                         <button onclick="openDisclaimerModal('global')" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 rounded-xl font-bold flex justify-center items-center gap-3 shadow-[0_0_20px_rgba(37,99,235,0.4)] border border-blue-400/50 hover:scale-[1.02] transition-all active:scale-95">
-                            <i class="fa-solid fa-layer-group"></i> Обрати дисклеймер (Всі)
+                            <i class="fa-solid fa-layer-group"></i> Обрати для всіх
                         </button>
                         <button onclick="openDisclaimerModal('local')" class="w-full glass-btn text-white py-4 rounded-xl font-bold flex justify-center items-center gap-3 hover:scale-[1.02] transition-all active:scale-95 border border-white/10 shadow-lg">
                             <i class="fa-solid fa-sliders text-blue-400"></i> Замінити на поточному
                         </button>
                     </div>
+                </div>
+
+                <div class="glass-panel p-4 rounded-2xl flex items-center justify-between border border-white/10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-black/40 flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-circle-half-stroke text-white/70"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold">Градієнт під дисклеймер</p>
+                        </div>
+                    </div>
+                    <label class="flex items-center cursor-pointer">
+                        <div class="relative">
+                            <input type="checkbox" id="gradient-toggle" class="sr-only peer" onchange="toggleScrim()">
+                            <div class="block bg-white/10 w-12 h-6 rounded-full border border-white/10 peer-checked:bg-blue-600 transition-colors"></div>
+                            <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-6"></div>
+                        </div>
+                    </label>
                 </div>
 
                 <div>
@@ -142,9 +148,7 @@
             <button onclick="renderTabs('zyn')" id="tab-zyn" class="flex-1 py-2 bg-blue-600 rounded-lg font-bold text-sm text-white transition-all">ZYN</button>
             <button onclick="renderTabs('iqos')" id="tab-iqos" class="flex-1 py-2 font-bold text-sm text-white/50 hover:text-white transition-all">IQOS</button>
         </div>
-        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3 no-scrollbar" id="disclaimer-list">
-            <p id="drive-status" class="text-white/50 text-center mt-8 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Підключення до бази...</p>
-        </div>
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-3 no-scrollbar" id="disclaimer-list"></div>
     </div>
 
     <div id="crop-modal" class="modal-enter fixed bottom-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full md:max-w-md z-[9999] solid-modal rounded-t-3xl md:rounded-3xl flex flex-col h-[85vh] md:h-auto shadow-[0_30px_60px_rgba(0,0,0,0.8)]">
@@ -162,24 +166,23 @@
                 <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1" oninput="updateZoom()">
                 <i class="fa-solid fa-image text-white text-lg"></i>
             </div>
-            <button onclick="saveCrop()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold mt-8 transition-colors border border-blue-400/50">
-                Зберегти ракурс
-            </button>
+            <button onclick="saveCrop()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold mt-8 transition-colors border border-blue-400/50">Зберегти ракурс</button>
         </div>
     </div>
 
     <script>
         let globalActiveDisclaimerUrl = null;
+        let globalActiveDisclaimerBrand = null; 
+        let globalShowGradient = false;
 
-        // ВАШЕ ФОТО ЗА ЗАМОВЧУВАННЯМ
         let slides = [{
             type: 'image',
-            src: 'Flower.jpg', // Переконайтеся, що файл називається точно так і лежить на GitHub
-            scale: 1,
-            x: 0,
-            y: 0,
+            src: 'Flower.jpg',
+            scale: 1, x: 0, y: 0,
             disclaimerUrl: null,
-            originalName: 'Flower' 
+            disclaimerBrand: null,
+            showGradient: false,
+            originalName: "Flower" 
         }];
 
         let currentRatio = '3/4';
@@ -193,9 +196,7 @@
                 const res = await fetch(url);
                 const data = await res.json();
                 if(data && (data.zyn.length > 0 || data.iqos.length > 0)) disclaimersData = data;
-            } catch(e) {
-                document.getElementById('drive-status').innerHTML = `<p class="text-red-400 text-center mt-4">Помилка бази Drive.</p>`;
-            }
+            } catch(e) { console.error("Drive Error"); }
             if(document.getElementById('disclaimer-modal').classList.contains('modal-active')) renderTabs('zyn');
         }
         fetchDrive();
@@ -203,17 +204,19 @@
         function renderSlides() {
             const slider = document.getElementById('slider');
             const dots = document.getElementById('slider-dots');
-            const btnPrev = document.getElementById('btn-prev');
-            const btnNext = document.getElementById('btn-next');
             const btnExportAll = document.getElementById('btn-export-all');
 
             slider.innerHTML = ''; dots.innerHTML = '';
 
             if (slides.length > 1) {
-                dots.classList.remove('hidden'); btnPrev.classList.remove('hidden'); btnNext.classList.remove('hidden');
+                dots.classList.remove('hidden');
+                document.getElementById('btn-prev').classList.remove('hidden');
+                document.getElementById('btn-next').classList.remove('hidden');
                 btnExportAll.disabled = false;
             } else {
-                dots.classList.add('hidden'); btnPrev.classList.add('hidden'); btnNext.classList.add('hidden');
+                dots.classList.add('hidden');
+                document.getElementById('btn-prev').classList.add('hidden');
+                document.getElementById('btn-next').classList.add('hidden');
                 btnExportAll.disabled = true;
             }
 
@@ -224,7 +227,7 @@
                     : `<img src="${slide.src}" class="w-full h-full object-cover transition-transform pointer-events-none" style="${style}">`;
                 
                 slider.innerHTML += `
-                    <div class="snap-center shrink-0 w-full h-full relative slide-container" id="slide-${i}">
+                    <div class="snap-center shrink-0 w-full h-full relative" id="slide-${i}">
                         <div class="w-full h-full overflow-hidden relative z-10">${media}</div>
                         <button onclick="triggerReplace(${i})" class="fa-rotate-btn absolute top-4 right-4 bg-black/60 border border-white/20 text-white text-xs px-4 py-2 rounded-full z-50 font-bold hover:bg-blue-600 transition-colors cursor-pointer">
                             <i class="fa-solid fa-rotate mr-1"></i> Замінити
@@ -237,7 +240,6 @@
         }
 
         function moveSlider(dir) { document.getElementById('slider').scrollBy({ left: dir * document.getElementById('slider').offsetWidth, behavior: 'smooth' }); }
-        
         function updateDots() {
             const index = getCurrentSlideIndex();
             document.querySelectorAll('.dot').forEach((d, i) => { d.className = `dot w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white' : 'bg-white/30'}`; });
@@ -246,43 +248,68 @@
 
         function getCurrentSlideIndex() {
             const slider = document.getElementById('slider');
-            if (!slider || !slider.offsetWidth) return 0;
             return Math.round(slider.scrollLeft / slider.offsetWidth);
         }
 
         function updateOverlayForCurrentSlide() {
             const currentIdx = getCurrentSlideIndex();
             const slide = slides[currentIdx];
+            if(!slide) return;
+
             const overlay = document.getElementById('disclaimer-overlay');
             const imgElement = document.getElementById('disclaimer-image');
+            const scrim = document.getElementById('scrim-overlay');
+            const toggle = document.getElementById('gradient-toggle');
             
-            if (slide && slide.disclaimerUrl) {
+            if (slide.disclaimerUrl) {
                 imgElement.src = slide.disclaimerUrl;
+                
+                // ДИНАМІЧНА ПОЗИЦІЯ ПРЕВ'Ю З УРАХУВАННЯМ БРЕНДУ ТА ФОРМАТУ
+                if (currentRatio === '3/4') {
+                    // 1170 / 1440 = 81.25%
+                    overlay.style.top = '81.25%'; 
+                } else {
+                    // Story (1920)
+                    if (slide.disclaimerBrand === 'zyn') {
+                        // 1675 - 60 = 1615. Далі: 1615 / 1920 = 84.114%
+                        overlay.style.top = '84.11%'; 
+                    } else {
+                        // Стандарт 1675. 1675 / 1920 = 87.24%
+                        overlay.style.top = '87.24%';
+                    }
+                }
+
                 overlay.classList.remove('hidden');
-            } else {
-                overlay.classList.add('hidden');
-                imgElement.src = '';
-            }
+            } else { overlay.classList.add('hidden'); }
+
+            scrim.style.opacity = slide.showGradient ? "1" : "0";
+            toggle.checked = slide.showGradient;
+        }
+
+        function toggleScrim() {
+            const idx = getCurrentSlideIndex();
+            const isChecked = document.getElementById('gradient-toggle').checked;
+            slides[idx].showGradient = isChecked;
+            updateOverlayForCurrentSlide();
         }
 
         function handleUpload(e) {
             const files = e.target.files; if(!files.length) return;
-            // Прибираємо початкове фото при першому завантаженні
             if (slides.length === 1 && slides[0].originalName === 'Flower') slides = [];
             for(let f of files) {
                 slides.push({
                     type: f.type.startsWith('video') ? 'video' : 'image',
                     src: URL.createObjectURL(f),
-                    scale: 1,
-                    x: 0,
-                    y: 0,
+                    scale: 1, x: 0, y: 0,
                     disclaimerUrl: globalActiveDisclaimerUrl,
-                    // Зберігаємо назву файлу без розширення (.jpg/.png)
+                    disclaimerBrand: globalActiveDisclaimerBrand,
+                    showGradient: globalShowGradient,
                     originalName: f.name.replace(/\.[^/.]+$/, "")
                 });
             }
             renderSlides(); e.target.value = '';
         }
+
         function triggerReplace(index) { replaceTargetIndex = index; document.getElementById('upload-replace').click(); }
         function handleReplace(e) {
             const f = e.target.files[0]; if(!f || replaceTargetIndex === -1) return;
@@ -295,14 +322,16 @@
         function changeRatio(ratio) {
             currentRatio = ratio;
             document.getElementById('export-target').style.aspectRatio = ratio === '3/4' ? '3 / 4' : '9 / 16';
+            document.getElementById('pan-container').style.aspectRatio = ratio === '3/4' ? '3 / 4' : '9 / 16';
             
-            const overlay = document.getElementById('disclaimer-overlay');
-            overlay.style.top = ratio === '3/4' ? '83.333%' : '88.542%';
+            const scrim = document.getElementById('scrim-overlay');
+            scrim.style.height = ratio === '3/4' ? '30%' : '15%';
 
-            const activeClass = 'w-1/2 py-3 bg-blue-600 shadow-lg border border-blue-400/30 rounded-lg text-sm font-bold text-white transition-all';
-            const inactiveClass = 'w-1/2 py-3 text-sm font-bold text-white/50 hover:text-white transition-all';
-            document.getElementById('btn-ratio-34').className = ratio === '3/4' ? activeClass : inactiveClass;
-            document.getElementById('btn-ratio-916').className = ratio === '9/16' ? activeClass : inactiveClass;
+            document.getElementById('btn-ratio-34').className = ratio === '3/4' ? 'w-1/2 py-3 bg-blue-600 shadow-lg border border-blue-400/30 rounded-lg text-sm font-bold text-white transition-all' : 'w-1/2 py-3 text-sm font-bold text-white/50 hover:text-white transition-all';
+            document.getElementById('btn-ratio-916').className = ratio === '9/16' ? 'w-1/2 py-3 bg-blue-600 shadow-lg border border-blue-400/30 rounded-lg text-sm font-bold text-white transition-all' : 'w-1/2 py-3 text-sm font-bold text-white/50 hover:text-white transition-all';
+
+            // Оновлюємо прев'ю, щоб воно перерахувало відсоток відступу
+            updateOverlayForCurrentSlide();
         }
 
         function openDisclaimerModal(mode) { disclaimerSelectionMode = mode; openModal('disclaimer-modal'); }
@@ -310,34 +339,32 @@
         function closeModals() { document.querySelectorAll('.modal-active').forEach(m => m.classList.remove('modal-active')); document.getElementById('backdrop').classList.add('opacity-0'); setTimeout(() => document.getElementById('backdrop').classList.add('hidden'), 300); }
 
         function renderTabs(brand) {
-            const activeClass = 'flex-1 py-2 bg-blue-600 rounded-lg font-bold text-sm text-white transition-all';
-            const inactiveClass = 'flex-1 py-2 bg-white/5 font-bold text-sm text-white/50 hover:text-white transition-all';
-            document.getElementById('tab-zyn').className = brand === 'zyn' ? activeClass : inactiveClass;
-            document.getElementById('tab-iqos').className = brand === 'iqos' ? activeClass : inactiveClass;
-            
             const list = document.getElementById('disclaimer-list'); list.innerHTML = '';
-            if(!disclaimersData[brand] || disclaimersData[brand].length === 0) { list.innerHTML = `<p class="text-white/50 text-center mt-4">Оновіть Apps Script!</p>`; return; }
-
-            disclaimersData[brand].forEach(item => {
+            document.getElementById('tab-zyn').className = brand === 'zyn' ? 'flex-1 py-2 bg-blue-600 rounded-lg font-bold text-sm text-white transition-all' : 'flex-1 py-2 bg-white/5 font-bold text-sm text-white/50 hover:text-white transition-all';
+            document.getElementById('tab-iqos').className = brand === 'iqos' ? 'flex-1 py-2 bg-blue-600 rounded-lg font-bold text-sm text-white transition-all' : 'flex-1 py-2 bg-white/5 font-bold text-sm text-white/50 hover:text-white transition-all';
+            
+            disclaimersData[brand]?.forEach(item => {
                 list.innerHTML += `
-                    <div onclick="selectDisclaimer('${item.file}')" class="w-full flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl cursor-pointer group transition-colors">
-                        <div class="w-16 h-8 bg-white/10 rounded flex items-center justify-center overflow-hidden shrink-0">
-                             <img src="${item.file}" class="max-h-full max-w-full object-contain">
-                        </div>
+                    <div onclick="selectDisclaimer('${item.file}', '${brand}')" class="w-full flex items-center gap-4 p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl cursor-pointer group transition-colors">
+                        <div class="w-16 h-8 bg-white/10 rounded flex items-center justify-center overflow-hidden shrink-0"><img src="${item.file}" class="max-h-full max-w-full object-contain"></div>
                         <div class="flex-1 font-bold text-white/90 text-sm md:text-base pointer-events-none">${item.name}</div>
-                        <i class="fa-solid fa-circle-check text-white/20 group-hover:text-blue-400 transition-colors text-xl pointer-events-none"></i>
+                        <i class="fa-solid fa-circle-check text-white/20 group-hover:text-blue-400 transition-colors text-xl"></i>
                     </div>
                 `;
             });
         }
 
-        function selectDisclaimer(url) {
+        function selectDisclaimer(url, brand) {
             if (disclaimerSelectionMode === 'global') {
                 globalActiveDisclaimerUrl = url;
-                slides.forEach(slide => slide.disclaimerUrl = url);
+                globalActiveDisclaimerBrand = brand;
+                slides.forEach(slide => {
+                    slide.disclaimerUrl = url;
+                    slide.disclaimerBrand = brand;
+                });
             } else {
-                const currentIdx = getCurrentSlideIndex();
-                if(slides[currentIdx]) slides[currentIdx].disclaimerUrl = url;
+                slides[getCurrentSlideIndex()].disclaimerUrl = url;
+                slides[getCurrentSlideIndex()].disclaimerBrand = brand;
             }
             updateOverlayForCurrentSlide(); closeModals();
         }
@@ -347,7 +374,6 @@
         function initCrop() {
             cropState.index = getCurrentSlideIndex(); const s = slides[cropState.index];
             cropState.scale = s.scale; cropState.x = s.x; cropState.y = s.y;
-            document.getElementById('pan-container').style.aspectRatio = currentRatio === '3/4' ? '3 / 4' : '9 / 16';
             document.getElementById('pan-target').innerHTML = s.type === 'video' ? `<video src="${s.src}" class="w-full h-full object-cover pointer-events-none" autoplay loop muted playsinline></video>` : `<img src="${s.src}" class="w-full h-full object-cover pointer-events-none">`;
             document.getElementById('zoom-slider').value = cropState.scale; updateTransform(); openModal('crop-modal');
         }
@@ -358,128 +384,87 @@
         function stopDrag() { drag.active = false; }
         function saveCrop() { slides[cropState.index].scale = cropState.scale; slides[cropState.index].x = cropState.x; slides[cropState.index].y = cropState.y; renderSlides(); closeModals(); }
 
-        // ============================================================================
-        // === ЕКСПОРТ ІЗ ДОДАВАННЯМ "_dis" ===
-        // ============================================================================
         async function exportMedia(mode) {
             try {
-                const slider = document.getElementById('slider');
-                let indicesToExport = [];
+                let indices = mode === 'current' ? [getCurrentSlideIndex()] : slides.map((_, i) => i);
+                const btnText = document.getElementById(mode === 'current' ? 'export-text-current' : 'export-text-all');
+                const originalText = btnText.innerText;
+                btnText.innerText = "Processing..."; 
 
-                if (mode === 'current') {
-                    indicesToExport.push(getCurrentSlideIndex());
-                } else {
-                    for (let i = 0; i < slides.length; i++) indicesToExport.push(i);
-                }
-
-                for (let i of indicesToExport) {
-                    if (!slides[i].disclaimerUrl) {
-                        alert(`На слайді №${i+1} не вибрано дисклеймер! Будь ласка, оберіть його.`);
+                for (let i of indices) {
+                    const slide = slides[i];
+                    if(!slide.disclaimerUrl) {
+                        alert(`На слайді №${i+1} не вибрано дисклеймер!`);
+                        btnText.innerText = originalText;
                         return;
                     }
-                }
 
-                const textId = mode === 'current' ? 'export-text-current' : 'export-text-all';
-                const iconId = mode === 'current' ? 'export-icon-current' : 'export-icon-all';
-                const btnText = document.getElementById(textId);
-                const btnIcon = document.getElementById(iconId);
-                const originalText = btnText.innerText;
-                const originalIcon = btnIcon.className;
+                    const MULT = 2; 
+                    const W = 1080 * MULT; 
+                    const H = (currentRatio === '3/4' ? 1440 : 1920) * MULT;
 
-                btnText.innerText = "Обробка..."; 
-                btnIcon.className = "fa-solid fa-spinner fa-spin text-blue-400";
-
-                for (let i of indicesToExport) {
-                    const slide = slides[i];
-                    
-                    const W = 1080; 
-                    const H = currentRatio === '3/4' ? 1440 : 1920;
-
-                    const c = document.createElement('canvas');
-                    c.width = W; 
-                    c.height = H;
+                    const c = document.createElement('canvas'); c.width = W; c.height = H;
                     const ctx = c.getContext('2d');
 
                     if (slide.type === 'image') {
-                        const bgImg = new Image();
-                        bgImg.crossOrigin = "anonymous";
-                        await new Promise((resolve, reject) => {
-                            bgImg.onload = resolve;
-                            bgImg.onerror = reject;
-                            bgImg.src = slide.src;
-                        });
-
-                        ctx.fillStyle = "#000000";
-                        ctx.fillRect(0, 0, W, H);
-
+                        const bgImg = new Image(); bgImg.crossOrigin = "anonymous";
+                        await new Promise((res, rej) => { bgImg.onload = res; bgImg.onerror = rej; bgImg.src = slide.src; });
+                        
+                        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
                         const imgRatio = bgImg.width / bgImg.height;
                         const canvasRatio = W / H;
-                        let drawW, drawH, startX, startY;
+                        let dW, dH, sX, sY;
 
-                        if (imgRatio > canvasRatio) {
-                            drawH = H;
-                            drawW = bgImg.width * (H / bgImg.height);
-                            startX = (W - drawW) / 2;
-                            startY = 0;
-                        } else {
-                            drawW = W;
-                            drawH = bgImg.height * (W / bgImg.width);
-                            startX = 0;
-                            startY = (H - drawH) / 2;
-                        }
+                        if (imgRatio > canvasRatio) { dH = H; dW = bgImg.width * (H / bgImg.height); sX = (W - dW) / 2; sY = 0; }
+                        else { dW = W; dH = bgImg.height * (W / bgImg.width); sX = 0; sY = (H - dH) / 2; }
 
-                        const previewEl = document.getElementById('export-target');
-                        const exportRatioScale = W / previewEl.offsetWidth; 
-
+                        const exportRatioScale = W / document.getElementById('export-target').offsetWidth;
                         ctx.save();
-                        ctx.translate(W/2, H/2); 
-                        ctx.scale(slide.scale, slide.scale); 
-                        ctx.translate(slide.x * exportRatioScale, slide.y * exportRatioScale); 
-                        ctx.drawImage(bgImg, startX - W/2, startY - H/2, drawW, drawH); 
+                        ctx.translate(W/2, H/2);
+                        ctx.scale(slide.scale, slide.scale);
+                        ctx.translate(slide.x * exportRatioScale, slide.y * exportRatioScale);
+                        ctx.drawImage(bgImg, sX - W/2, sY - H/2, dW, dH);
                         ctx.restore();
                     }
 
-                    const discImg = new Image();
-                    discImg.crossOrigin = "anonymous";
-                    await new Promise((resolve, reject) => {
-                        discImg.onload = resolve;
-                        discImg.onerror = reject;
-                        discImg.src = slide.disclaimerUrl;
-                    });
+                    if (slide.showGradient) {
+                        const scrimH = (currentRatio === '3/4' ? H * 0.3 : H * 0.15);
+                        const grd = ctx.createLinearGradient(0, H, 0, H - scrimH);
+                        grd.addColorStop(0, 'rgba(0,0,0,0.7)');
+                        grd.addColorStop(1, 'rgba(0,0,0,0)');
+                        ctx.fillStyle = grd;
+                        ctx.fillRect(0, H - scrimH, W, scrimH);
+                    }
 
-                    const tw = W * (11/12); 
-                    const scale = tw / discImg.width; 
-                    const th = discImg.height * scale;
+                    const dImg = new Image(); dImg.crossOrigin = "anonymous";
+                    await new Promise(r => { dImg.onload = r; dImg.src = slide.disclaimerUrl; });
                     
-                    const targetY = currentRatio === '3/4' ? 1200 : 1700;
+                    const tw = W; 
+                    const ts = tw / dImg.width; 
+                    const th = dImg.height * ts;
                     
-                    ctx.drawImage(discImg, (W - tw) / 2, targetY, tw, th);
+                    // ДИНАМІЧНА ПОЗИЦІЯ ПРИ ЕКСПОРТІ (З урахуванням MULT)
+                    let baseTY;
+                    if (currentRatio === '3/4') {
+                        baseTY = 1170;
+                    } else {
+                        // Якщо це ZYN і Story, піднімаємо на 60 пікселів (1675 - 60 = 1615)
+                        baseTY = slide.disclaimerBrand === 'zyn' ? 1615 : 1675;
+                    }
+                    const tY = baseTY * MULT;
                     
+                    ctx.drawImage(dImg, 0, tY, tw, th);
+
                     const link = document.createElement('a');
+                    link.download = `${slide.originalName}_dis.${slide.type === 'image' ? 'jpg' : 'png'}`;
                     
-                    // БЕРЕМО ОРИГІНАЛЬНУ НАЗВУ + "_dis"
-                    const fileName = slide.originalName || `Vibe_Export_${i+1}`;
-                    const extension = slide.type === 'image' ? 'jpg' : 'png';
-                    
-                    link.download = `${fileName}_dis.${extension}`;
-                    link.href = c.toDataURL(slide.type === 'image' ? 'image/jpeg' : 'image/png', 0.95);
+                    link.href = c.toDataURL(slide.type === 'image' ? 'image/jpeg' : 'image/png', 1.0);
                     link.click();
-                    
-                    await new Promise(r => setTimeout(r, 400)); 
+                    await new Promise(r => setTimeout(r, 400));
                 }
-
-                btnText.innerText = originalText; 
-                btnIcon.className = originalIcon;
-
-            } catch(e) {
-                console.error("Експорт впав:", e);
-                alert("Сталася помилка при експорті. Переконайтеся, що ви обрали дисклеймер.");
-                
-                document.getElementById(mode === 'current' ? 'export-text-current' : 'export-text-all').innerText = mode === 'current' ? 'Поточне' : 'Всі';
-                document.getElementById(mode === 'current' ? 'export-icon-current' : 'export-icon-all').className = mode === 'current' ? 'fa-solid fa-download text-blue-400' : 'fa-solid fa-layer-group text-purple-400';
-            }
+                btnText.innerText = originalText;
+            } catch(e) { alert("Експорт не вдався. Переконайтеся, що ви обрали дисклеймер."); }
         }
-
         renderSlides();
     </script>
 </body>
